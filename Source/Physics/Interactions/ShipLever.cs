@@ -34,7 +34,7 @@ internal class ShipLeverInteractable : MonoBehaviour, VRInteractable
 
         interactor.FingerCurler.ForceFist(true);
 
-        lever.StartInteracting(interactor.transform, ShipLever.Actor.Self);
+        lever.StartInteracting(interactor.transform, ShipLever.Actor.Self, interactor);
 
         return true;
     }
@@ -60,6 +60,8 @@ public class ShipLever : MonoBehaviour
     private TriggerDirection shouldTrigger = TriggerDirection.None;
     private Actor currentActor;
     private Channel channel;
+    VRInteractor CurrentInteractor;
+    float LastVibrateRotation;
 
     public bool CanInteract => lever.triggerScript.interactable && currentActor != Actor.Other;
 
@@ -98,15 +100,23 @@ public class ShipLever : MonoBehaviour
             shouldTrigger = eulerAngles.x > 290 ? TriggerDirection.DepartShip : TriggerDirection.None;
         }
 
+        if (CurrentInteractor != null && Mathf.Abs(LastVibrateRotation - eulerAngles.y) >= 5)
+        {
+            CurrentInteractor.Vibrate(0.1f, 0.3f);
+            LastVibrateRotation = eulerAngles.y;
+        }
+
         transform.eulerAngles = eulerAngles;
     }
 
-    public void StartInteracting(Transform target, Actor actor)
+    public void StartInteracting(Transform target, Actor actor, VRInteractor interactor = null)
     {
         currentActor = actor;
         animator.enabled = false;
         rotateTo = target;
-        
+        CurrentInteractor = interactor;
+
+
         if (actor == Actor.Self)
             channel.SendPacket([1]);
     }
