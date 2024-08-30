@@ -1,6 +1,7 @@
 ﻿using LCVR.Assets;
 using LCVR.Networking;
 using LCVR.Player;
+using System;
 using System.Collections;
 using System.IO;
 using UnityEngine;
@@ -34,7 +35,7 @@ internal class ShipLeverInteractable : MonoBehaviour, VRInteractable
 
         interactor.FingerCurler.ForceFist(true);
 
-        lever.StartInteracting(interactor.transform, ShipLever.Actor.Self);
+        lever.StartInteracting(interactor.transform, ShipLever.Actor.Self, interactor);
 
         return true;
     }
@@ -68,11 +69,11 @@ public class ShipLever : MonoBehaviour
     {
         animator = GetComponent<Animator>();
         lever = FindObjectOfType<StartMatchLever>();
-        
+
         channel = NetworkSystem.Instance.CreateChannel(ChannelType.ShipLever);
         channel.OnPacketReceived += OnOtherInteractWithLever;
     }
-
+    VRInteractor interactor;
     private void Update()
     {
         if (rotateTo == null)
@@ -81,6 +82,9 @@ public class ShipLever : MonoBehaviour
         // There are better ways to do this rotation stuff, I have no clue how though, so this is the best that I could come up with
         var direction = rotateTo.TransformPoint(new Vector3(0.02f, 0.05f, 0f)) - transform.position;
         var eulerAngles = Quaternion.LookRotation(direction).eulerAngles;
+
+        if (interactor != null)
+            interactor.Vibrate(0.1f, 0.1f);
 
         if (eulerAngles.y > 180)
         {
@@ -102,12 +106,14 @@ public class ShipLever : MonoBehaviour
         transform.eulerAngles = eulerAngles;
     }
 
-    public void StartInteracting(Transform target, Actor actor)
+    public void StartInteracting(Transform target, Actor actor, VRInteractor vrInteractor)
     {
         currentActor = actor;
         animator.enabled = false;
         rotateTo = target;
-        
+        interactor = vrInteractor;
+
+
         if (actor == Actor.Self)
             channel.SendPacket([1]);
     }
@@ -128,7 +134,7 @@ public class ShipLever : MonoBehaviour
         {
             if (currentActor == Actor.Self)
                 channel.SendPacket([0]);
-            
+
             // Always reset at the end
             rotateTo = null;
             shouldTrigger = TriggerDirection.None;
@@ -156,7 +162,7 @@ public class ShipLever : MonoBehaviour
         switch (interacting)
         {
             case true when CurrentActor == ShipLever.Actor.None:
-                StartInteracting(player.Bones.RightHand, ShipLever.Actor.Other);
+                StartInteracting(player.Bones.RightHand, ShipLever.Actor.Other, null);
                 break;
             case false when CurrentActor == ShipLever.Actor.Other:
                 StopInteracting();
